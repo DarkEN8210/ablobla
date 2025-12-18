@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treino Visual — Completo</title>
+
+<script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:system-ui}
+#ui{position:fixed;left:12px;top:12px;z-index:999;display:flex;gap:10px}
+.btn{background:#111827;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+#panel{
+position:fixed;left:12px;top:70px;z-index:999;
+background:rgba(2,6,23,.9);padding:12px;border-radius:10px;
+color:#e5e7eb;width:270px;font-size:13px
+}
+#counter{
+margin-top:10px;
+background:#020617;
+padding:8px;
+border-radius:8px;
+text-align:center;
+font-weight:600;
+}
+#footer{position:fixed;right:12px;bottom:12px;color:#cbd5e1;font-size:13px}
+input{width:100%}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+  <div id="startBtn" class="btn">▶️ Iniciar</div>
+  <div id="restartBtn" class="btn" style="display:none">🔄 Reiniciar</div>
+</div>
+
+<div id="panel">
+<b>🎯 Parâmetros do Treino</b><br><br>
+
+<label>Amplitude Horizontal (X)</label>
+<input id="ampX" type="range" min="0.3" max="2.5" step="0.05" value="1">
+<span id="valX">1.00</span>
+
+<br><br>
+
+<label>Amplitude Vertical (Y)</label>
+<input id="ampY" type="range" min="0.3" max="2.5" step="0.05" value="1">
+<span id="valY">1.00</span>
+
+<br><br>
+
+<label>Velocidade</label>
+<input id="speed" type="range" min="0.4" max="2.5" step="0.05" value="1">
+<span id="valSpeed">1.00</span>
+
+<br><br>
+
+<label>Repetições</label>
+<input id="reps" type="range" min="1" max="20" step="1" value="5">
+<span id="valReps">5</span>
+
+<div id="counter">
+Repetições: <span id="repNow">0</span> / <span id="repTotal">5</span>
+</div>
+
+<br>
+<small>Câmera fixa — siga apenas com os olhos</small>
+</div>
+
+<div id="footer">Treino visual controlado</div>
+
+<a-scene embedded background="color:#000">
+  <a-entity light="type:ambient;color:#444"></a-entity>
+  <a-entity camera position="0 1.6 0"></a-entity>
+
+  <a-entity id="target" therapeutic-target="enabled:false">
+    <a-sphere radius="0.18" color="#FFD700" emissive="#FFD700"></a-sphere>
+    <a-ring radius-inner="0.32" radius-outer="0.45" rotation="-90 0 0"
+            material="opacity:.25;emissive:#FFD700"></a-ring>
+  </a-entity>
+</a-scene>
+
+<script>
+/* ===== CONFIG BASE ===== */
+const baseAmpX = 0.55;
+const baseAmpY = 0.55;
+const baseMoveDuration = 2500;
+const basePauseDuration = 1000;
+
+/* ===== CONTROLES ===== */
+const ctrl = { ampX:1, ampY:1, speed:1, reps:5 };
+
+const ampX = document.getElementById('ampX');
+const ampY = document.getElementById('ampY');
+const speed = document.getElementById('speed');
+const reps = document.getElementById('reps');
+
+const valX = document.getElementById('valX');
+const valY = document.getElementById('valY');
+const valSpeed = document.getElementById('valSpeed');
+const valReps = document.getElementById('valReps');
+
+const repNow = document.getElementById('repNow');
+const repTotal = document.getElementById('repTotal');
+
+function updateCtrl(){
+  ctrl.ampX = parseFloat(ampX.value);
+  ctrl.ampY = parseFloat(ampY.value);
+  ctrl.speed = parseFloat(speed.value);
+  ctrl.reps = parseInt(reps.value);
+
+  valX.textContent = ctrl.ampX.toFixed(2);
+  valY.textContent = ctrl.ampY.toFixed(2);
+  valSpeed.textContent = ctrl.speed.toFixed(2);
+  valReps.textContent = ctrl.reps;
+  repTotal.textContent = ctrl.reps;
+}
+ampX.oninput = updateCtrl;
+ampY.oninput = updateCtrl;
+speed.oninput = updateCtrl;
+reps.oninput = updateCtrl;
+updateCtrl();
+
+/* ===== BOTÕES ===== */
+const startBtn = document.getElementById('startBtn');
+const restartBtn = document.getElementById('restartBtn');
+const targetEl = document.getElementById('target');
+
+function startTraining(){
+  repNow.textContent = "0";
+  restartBtn.style.display = "none";
+  startBtn.style.display = "none";
+
+  targetEl.components['therapeutic-target']?.reset();
+  targetEl.setAttribute('therapeutic-target','enabled:true');
+}
+
+startBtn.onclick = startTraining;
+restartBtn.onclick = startTraining;
+
+/* ===== MOVIMENTO + CONTADOR ===== */
+AFRAME.registerComponent('therapeutic-target',{
+  schema:{enabled:{default:false}},
+  init(){
+    this.reset();
+  },
+  reset(){
+    this.t0 = performance.now();
+    this.lastPhase = -1;
+    this.completedReps = 0;
+  },
+  tick(t){
+    if(!this.data.enabled) return;
+
+    const moveDuration = baseMoveDuration / ctrl.speed;
+    const pauseDuration = basePauseDuration / ctrl.speed;
+    const phaseTime = moveDuration*2 + pauseDuration;
+
+    const elapsed = (t-this.t0) % (phaseTime*4);
+    const phase = Math.floor(elapsed / phaseTime);
+    const p = elapsed % phaseTime;
+
+    /* CONTADOR */
+    if(phase === 0 && this.lastPhase === 3){
+      this.completedReps++;
+      repNow.textContent = this.completedReps;
+
+      if(this.completedReps >= ctrl.reps){
+        this.el.setAttribute('therapeutic-target','enabled:false');
+        restartBtn.style.display = "inline-block";
+        return;
+      }
+    }
+    this.lastPhase = phase;
+
+    const ampXf = baseAmpX * ctrl.ampX;
+    const ampYf = baseAmpY * ctrl.ampY;
+
+    let x=0,y=1.6;
+
+    function calc(pr,amp){
+      if(pr<moveDuration) return amp*Math.sin(pr/moveDuration*Math.PI/2);
+      if(pr<moveDuration+pauseDuration) return amp;
+      return amp*Math.cos((pr-moveDuration-pauseDuration)/moveDuration*Math.PI/2);
+    }
+
+    if(phase===0) x-=calc(p,ampXf);
+    if(phase===1) y+=calc(p,ampYf);
+    if(phase===2) x+=calc(p,ampXf);
+    if(phase===3) y-=calc(p,ampYf);
+
+    this.el.setAttribute('position',`${x.toFixed(3)} ${y.toFixed(3)} -2`);
+  }
+});
+</script>
+
+</body>
+</html>
