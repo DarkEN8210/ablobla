@@ -75,10 +75,24 @@ Repetições: <span id="repNow">0</span> / <span id="repTotal">5</span>
   <a-entity light="type:ambient;color:#444"></a-entity>
   <a-entity camera position="0 1.6 0"></a-entity>
 
+  <!-- ALVO: BOLA + ANEL (SATURNO) -->
   <a-entity id="target" therapeutic-target="enabled:false">
-    <a-sphere radius="0.18" color="#FFD700" emissive="#FFD700"></a-sphere>
-    <a-ring radius-inner="0.32" radius-outer="0.45" rotation="-90 0 0"
-            material="opacity:.25;emissive:#FFD700"></a-ring>
+
+    <!-- BOLA -->
+    <a-sphere
+      radius="0.18"
+      color="#FFD700"
+      emissive="#FFD700">
+    </a-sphere>
+
+    <!-- ANEL (SE MOVE JUNTO COM A BOLA) -->
+    <a-ring
+      radius-inner="0.36"
+      radius-outer="0.43"
+      rotation="-50 0 0"
+      material="opacity:0.3;emissive:#FFD700">
+    </a-ring>
+
   </a-entity>
 </a-scene>
 
@@ -143,9 +157,7 @@ restartBtn.onclick = startTraining;
 /* ===== MOVIMENTO + CONTADOR ===== */
 AFRAME.registerComponent('therapeutic-target',{
   schema:{enabled:{default:false}},
-  init(){
-    this.reset();
-  },
+  init(){ this.reset(); },
   reset(){
     this.t0 = performance.now();
     this.lastPhase = -1;
@@ -162,7 +174,6 @@ AFRAME.registerComponent('therapeutic-target',{
     const phase = Math.floor(elapsed / phaseTime);
     const p = elapsed % phaseTime;
 
-    /* CONTADOR */
     if(phase === 0 && this.lastPhase === 3){
       this.completedReps++;
       repNow.textContent = this.completedReps;
@@ -178,7 +189,7 @@ AFRAME.registerComponent('therapeutic-target',{
     const ampXf = baseAmpX * ctrl.ampX;
     const ampYf = baseAmpY * ctrl.ampY;
 
-    let x=0,y=1.6;
+    let x=0, y=1.6;
 
     function calc(pr,amp){
       if(pr<moveDuration) return amp*Math.sin(pr/moveDuration*Math.PI/2);
